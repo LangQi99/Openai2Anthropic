@@ -114,7 +114,7 @@ func buildOpenAI2Request(req anthropicRequest, model string) (openAI2Request, in
 				Type:        "function",
 				Name:        tool.Name,
 				Description: tool.Description,
-				Parameters:  tool.InputSchema,
+				Parameters:  sanitizeToolSchema(tool.InputSchema),
 			})
 		}
 
@@ -506,6 +506,27 @@ func resolveModel(requested string, available []string) string {
 		return available[0]
 	}
 	return requested
+}
+
+func sanitizeToolSchema(schema map[string]any) map[string]any {
+	if schema == nil {
+		return map[string]any{
+			"type":       "object",
+			"properties": map[string]any{},
+		}
+	}
+	schemaType, _ := schema["type"].(string)
+	if schemaType == "object" {
+		if _, ok := schema["properties"]; !ok {
+			fixed := make(map[string]any, len(schema)+1)
+			for k, v := range schema {
+				fixed[k] = v
+			}
+			fixed["properties"] = map[string]any{}
+			return fixed
+		}
+	}
+	return schema
 }
 
 func estimateAnthropicInputTokens(req anthropicRequest) int {
